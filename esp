@@ -7,30 +7,31 @@ local UserInputService = game:GetService("UserInputService")
 local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 
--- Состояние функций
+-- Настройки функций
 local Settings = {
     ESP_Enabled = false,
     TP_On_E_Enabled = false,
     Sound_Alert_Enabled = true,
     Fly_Enabled = false,
-    Fly_Speed = 50 -- Установлено по умолчанию на 50
+    Fly_Speed = 50,
+    Noclip_Enabled = false,
+    Coin_Farm_Enabled = false,
+    GodMode_Enabled = false
 }
 
--- Цвета ролей
 local COLORS = {
     Murderer = Color3.fromRGB(255, 0, 0),
     Sheriff = Color3.fromRGB(0, 0, 255),
     Innocent = Color3.fromRGB(0, 255, 0)
 }
 
--- Переменные для полета и ноуклипа
 local flying = false
 local flyConnection
 local noclipConnection
 
 local Window = Rayfield:CreateWindow({
-    Name = "MM2 Helper Pro | Solara",
-    LoadingTitle = "Загрузка систем...",
+    Name = "MM2 Ultimate | Solara",
+    LoadingTitle = "Запуск приватного пака...",
     LoadingSubtitle = "by AI Assistant",
     ConfigurationSaving = { Enabled = false },
     KeySystem = false
@@ -54,14 +55,13 @@ local function getPlayerRole(player)
     return "Innocent"
 end
 
--- Функция ESP Подсветки
+-- Функция ESP
 local function createHighlight(player)
     if player == LocalPlayer then return end
     RunService.RenderStepped:Connect(function()
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local highlight = char:FindFirstChild("RoleHighlight")
-            
             if Settings.ESP_Enabled then
                 if not highlight then
                     highlight = Instance.new("Highlight")
@@ -83,7 +83,7 @@ end
 for _, player in pairs(Players:GetPlayers()) do createHighlight(player) end
 Players.PlayerAdded:Connect(createHighlight)
 
--- Функция Телепорта к пистолету
+-- Телепорт к пистолету
 local function teleportToGun()
     local gunDrop = Workspace:FindFirstChild("GunDrop")
     if gunDrop and gunDrop:IsA("Model") then
@@ -95,7 +95,7 @@ local function teleportToGun()
     end
 end
 
--- Функция управления Полетом и Ноуклипом
+-- Функция Полета (Fly) — ВЕРНУЛ НА "X"
 local function toggleFly()
     local char = LocalPlayer.Character
     if not char then return end
@@ -104,69 +104,99 @@ local function toggleFly()
     if not hrp or not humanoid then return end
 
     flying = not flying
-    
     if flying then
         humanoid.PlatformStand = true
         local camera = Workspace.CurrentCamera
-        
-        -- Полет через RenderStepped
         flyConnection = RunService.RenderStepped:Connect(function()
             local moveDir = Vector3.new(0,0,0)
-            
             if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
             if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
             if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
             if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
             if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
-            
             hrp.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * Settings.Fly_Speed or Vector3.new(0,0,0)
             hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
         end)
-        
-        -- Ноуклип (отключение коллизий всех частей тела со стенами)
-        noclipConnection = RunService.Stepped:Connect(function()
-            if flying and LocalPlayer.Character then
-                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end)
-        
-        Rayfield:Notify({Name = "Полет и Ноуклип", Content = "Активировано! Стены отключены (Кнопка X)", Duration = 2})
+        Rayfield:Notify({Name = "Полет", Content = "Включен на кнопку 'X'", Duration = 2})
     else
-        -- Корректное отключение полета и возврат физики тела
         if flyConnection then flyConnection:Disconnect() end
-        if noclipConnection then noclipConnection:Disconnect() end
         humanoid.PlatformStand = false
         hrp.Velocity = Vector3.new(0,0,0)
-        
-        -- Возвращаем коллизию персонажу
-        if LocalPlayer.Character then
-            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part.CanCollide = true
-                end
-            end
-        end
-        Rayfield:Notify({Name = "Полет и Ноуклип", Content = "Деактивировано! Стены снова твердые", Duration = 2})
+        Rayfield:Notify({Name = "Полет", Content = "Выключен", Duration = 2})
     end
 end
 
--- Обработка клавиш E и X
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.E and Settings.TP_On_E_Enabled then
-        teleportToGun()
+-- Функция Ноуклипа (Noclip) — НА "P"
+local function toggleNoclip()
+    Settings.Noclip_Enabled = not Settings.Noclip_Enabled
+    if Settings.Noclip_Enabled then
+        noclipConnection = RunService.Stepped:Connect(function()
+            if Settings.Noclip_Enabled and LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+        Rayfield:Notify({Name = "Ноуклип", Content = "Включен на кнопку 'P' (Стены отключены)", Duration = 2})
+    else
+        if noclipConnection then noclipConnection:Disconnect() end
+        if LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then part.CanCollide = true end
+            end
+        end
+        Rayfield:Notify({Name = "Ноуклип", Content = "Выключен (Стены твердые)", Duration = 2})
     end
-    if input.KeyCode == Enum.KeyCode.X and Settings.Fly_Enabled then
-        toggleFly()
+end
+
+-- Скрипт Сбора монет (Coin Farm)
+RunService.Heartbeat:Connect(function()
+    if Settings.Coin_Farm_Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        local container = Workspace:FindFirstChild("Normal") or Workspace:FindFirstChild("Innocent")
+        if container and container:FindFirstChild("CoinContainer") then
+            for _, coin in pairs(container.CoinContainer:GetChildren()) do
+                if coin:IsA("BasePart") or coin:FindFirstChildWhichIsA("BasePart") then
+                    local coinPart = coin:IsA("BasePart") and coin or coin:FindFirstChildWhichIsA("BasePart")
+                    if (coinPart.Position - hrp.Position).Magnitude < 250 then
+                        coinPart.CFrame = hrp.CFrame
+                    end
+                end
+            end
+        end
     end
 end)
 
--- Звук при выпадении пистолета
+-- Функция Бессмертия от ножа (GodMode)
+RunService.Stepped:Connect(function()
+    if Settings.GodMode_Enabled and LocalPlayer.Character then
+        local target = LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("UpperTorso")
+        if target then
+            for _, child in pairs(LocalPlayer.Character:GetChildren()) do
+                if child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" then
+                    child.CanTouch = false
+                end
+            end
+        end
+    else
+        if LocalPlayer.Character then
+            for _, child in pairs(LocalPlayer.Character:GetChildren()) do
+                if child:IsA("BasePart") then child.CanTouch = true end
+            end
+        end
+    end
+end)
+
+-- Обработка биндов клавиатуры
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.E and Settings.TP_On_E_Enabled then teleportToGun() end
+    if input.KeyCode == Enum.KeyCode.X and Settings.Fly_Enabled then toggleFly() end -- Снова на X
+    if input.KeyCode == Enum.KeyCode.P then toggleNoclip() end -- На кнопку P
+end)
+
+-- Звук пистолета
 Workspace.ChildAdded:Connect(function(child)
     if child.Name == "GunDrop" and Settings.Sound_Alert_Enabled then
         local alertSound = Instance.new("Sound")
@@ -174,7 +204,6 @@ Workspace.ChildAdded:Connect(function(child)
         alertSound.Volume = 2
         alertSound.Parent = SoundService
         alertSound:Play()
-        
         Rayfield:Notify({
             Name = "Внимание!",
             Content = "Пистолет выпал! Нажмите 'E' для телепортации.",
@@ -185,7 +214,7 @@ Workspace.ChildAdded:Connect(function(child)
     end
 end)
 
---- ЭЛЕМЕНТЫ ХУДА ---
+--- НАСТРОЙКА ХУДА ---
 
 MainTab:CreateToggle({
     Name = "Включить ESP (Подсветка ролей)",
@@ -211,7 +240,7 @@ MainTab:CreateToggle({
 })
 
 MainTab:CreateToggle({
-    Name = "Разрешить полет + Ноуклип (Кнопка 'X')",
+    Name = "Разрешить полет (Кнопка 'X')",
     CurrentValue = false,
     Callback = function(Value) 
         Settings.Fly_Enabled = Value 
@@ -219,7 +248,6 @@ MainTab:CreateToggle({
     end,
 })
 
--- Слайдер настроен по умолчанию строго на 50, как вы и просили
 MainTab:CreateSlider({
     Name = "Скорость полета",
     Min = 20,
@@ -228,3 +256,7 @@ MainTab:CreateSlider({
     Increment = 5,
     Callback = function(Value) Settings.Fly_Speed = Value end,
 })
+
+MainTab:CreateToggle({
+    Name = "Авто-сбор монет (Coin Farm)",
+    CurrentValue = false,
