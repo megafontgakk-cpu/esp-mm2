@@ -1,0 +1,222 @@
+-- kiskis cheat Menu 1.21 by Aetherion
+
+if not game:IsLoaded() then
+	game:GetService("StarterGui"):SetCore("SendNotification", {
+		Title = "Script loading",
+		Text = "Waiting for the game to finish loading!",
+		Duration = 5
+	})
+	game.Loaded:Wait()
+end
+-- Instances:
+
+local Converted = {
+	["_YARHM"] = Instance.new("ScreenGui");
+	["_FUNCTIONS"] = Instance.new("ModuleScript");
+	["_Flee the Facility"] = Instance.new("LocalScript");
+	["_Universal"] = Instance.new("LocalScript");
+	["_DraggableObject"] = Instance.new("ModuleScript");
+	["_ClickAndHold"] = Instance.new("ModuleScript");
+	["_Spring"] = Instance.new("ModuleScript");
+	["_Init"] = Instance.new("LocalScript");
+	["_Murder Mystery 2"] = Instance.new("LocalScript");
+	["_ESPIndicator"] = Instance.new("ModuleScript");
+	["_Bezier"] = Instance.new("ModuleScript");
+	["_PointSave"] = Instance.new("ModuleScript");
+	["_Theme"] = Instance.new("ModuleScript");
+	["_FlyUtility"] = Instance.new("ModuleScript");
+	["_Open"] = Instance.new("TextButton");
+	["_InitOpen"] = Instance.new("LocalScript");
+	["_OnClick"] = Instance.new("LocalScript");
+	["_Resizer"] = Instance.new("LocalScript");
+	["_UICorner"] = Instance.new("UICorner");
+	["_UIPadding"] = Instance.new("UIPadding");
+	["_DropdownFrameSample"] = Instance.new("Frame");
+	["_UICorner1"] = Instance.new("UICorner");
+	["_UIGradient"] = Instance.new("UIGradient");
+	["_UIStroke"] = Instance.new("UIStroke");
+	["_UIGradient1"] = Instance.new("UIGradient");
+	["_ScrollingFrame"] = Instance.new("ScrollingFrame");
+	["_UIListLayout"] = Instance.new("UIListLayout");
+	["_Sample"] = Instance.new("TextButton");
+	["_UIPadding1"] = Instance.new("UIPadding");
+	["_UICorner2"] = Instance.new("UICorner");
+	["_UIPadding2"] = Instance.new("UIPadding");
+	["_themedColor"] = Instance.new("StringValue");
+	["_ListButton"] = Instance.new("TextButton");
+	["_UICorner3"] = Instance.new("UICorner");
+	["_Notifications"] = Instance.new("Frame");
+	["_UIListLayout1"] = Instance.new("UIListLayout");
+	["_UIPadding3"] = Instance.new("UIPadding");
+	["_Placeholder"] = Instance.new("Frame");
+	["_UICorner4"] = Instance.new("UICorner");
+	["_TextLabel"] = Instance.new("TextLabel");
+	["_TextBoxPlaceholder"] = Instance.new("Frame");
+	["_UIListLayout2"] = Instance.new("UIListLayout");
+	["_TextButton"] = Instance.new("TextButton");
+	["_UICorner5"] = Instance.new("UICorner");
+	["_UIPadding4"] = Instance.new("UIPadding");
+	["_TextBox"] = Instance.new("TextBox");
+	["_UICorner6"] = Instance.new("UICorner");
+	["_FloatingButton"] = Instance.new("TextButton");
+	["_Keybinding"] = Instance.new("LocalScript");
+	["_Invisible"] = Instance.new("LocalScript");
+	["_UIPadding5"] = Instance.new("UIPadding");
+	["_UICorner7"] = Instance.new("UICorner");
+	["_UIStroke1"] = Instance.new("UIStroke");
+	["_Lock"] = Instance.new("TextLabel");
+	["_UIScale"] = Instance.new("UIScale");
+	["_Ripple"] = Instance.new("Frame");
+	["_UICorner8"] = Instance.new("UICorner");
+	["_UIScale1"] = Instance.new("UIScale");
+	["_Dropdown"] = Instance.new("Frame");
+	["_TextLabel1"] = Instance.new("TextLabel");
+	["_UIListLayout3"] = Instance.new("UIListLayout");
+	["_UIPadding6"] = Instance.new("UIPadding");
+	["_Frame"] = Instance.new("TextButton");
+	["_UIPadding7"] = Instance.new("UIPadding");
+	["_UICorner9"] = Instance.new("UICorner");
+	["_AddCustomModule"] = Instance.new("Frame");
+	["_UICorner10"] = Instance.new("UICorner");
+	["_UIStroke2"] = Instance.new("UIStroke");
+	["_UIGradient2"] = Instance.new("UIGradient");
+	["_UIGradient3"] = Instance.new("UIGradient");
+	["_UIScale2"] = Instance.new("UIScale");
+	["_TextLabel2"] = Instance.new("TextLabel");
+	["_TextBox1"] = Instance.new("TextBox");
+	["_UICorner11"] = Instance.new("UICorner");
+	["_UIPadding8"] = Instance.new("UIPadding");
+	["_TextLabel3"] = Instance.new("TextLabel");
+	["_Add"] = Instance.new("TextButton");
+	["_LocalScript"] = Instance.new("LocalScript");
+	["_UICorner12"] = Instance.new("UICorner");
+	["_UIPadding9"] = Instance.new("UIPadding");
+	["_UIStroke3"] = Instance.new("UIStroke");
+	["_Cancel"] = Instance.new("TextButton");
+	["_LocalScript1"] = Instance.new("LocalScript");
+	["_UICorner13"] = Instance.new("UICorner");
+	["_UIPadding10"] = Instance.new("UIPadding");
+	["_UIStroke4"] = Instance.new("UIStroke");
+	["_themedColor1"] = Instance.new("StringValue");
+	["_Menu"] = Instance.new("Frame");
+	["_UICorner14"] = Instance.new("UICorner");
+	["_UIStroke5"] = Instance.new("UIStroke");
+	["_UIGradient4"] = Instance.new("UIGradient");
+	["_Animator"] = Instance.new("LocalScript");
+	["_HubCredits"] = Instance.new("TextLabel");
+	["_HubDesc"] = Instance.new("TextLabel");
+	["_HubName"] = Instance.new("TextLabel");
+	["_CanvasGroup"] = Instance.new("CanvasGroup");
+	["_UICorner15"] = Instance.new("UICorner");
+	["_ImageLabel"] = Instance.new("ImageLabel");
+	["_Opener"] = Instance.new("TextButton");
+	["_TextLabel4"] = Instance.new("TextLabel");
+	["_CloseArea"] = Instance.new("TextButton");
+	["_CloseOpen"] = Instance.new("LocalScript");
+	["_Frame1"] = Instance.new("Frame");
+	["_UICorner16"] = Instance.new("UICorner");
+	["_themedColor2"] = Instance.new("StringValue");
+	["_TextLabel5"] = Instance.new("TextLabel");
+	["_UICorner17"] = Instance.new("UICorner");
+	["_AllowForSpring"] = Instance.new("BindableEvent");
+	["_themedColor3"] = Instance.new("StringValue");
+	["_UIGradient5"] = Instance.new("UIGradient");
+	["_Area"] = Instance.new("CanvasGroup");
+	["_Area1"] = Instance.new("ScrollingFrame");
+	["_TextLabel6"] = Instance.new("TextLabel");
+	["_TextLabel7"] = Instance.new("TextLabel");
+	["_UICorner18"] = Instance.new("UICorner");
+	["_List"] = Instance.new("CanvasGroup");
+	["_AutoSetup"] = Instance.new("LocalScript");
+	["_UICorner19"] = Instance.new("UICorner");
+	["_ScrollingFrame1"] = Instance.new("ScrollingFrame");
+	["_UIListLayout4"] = Instance.new("UIListLayout");
+	["_UIPadding11"] = Instance.new("UIPadding");
+	["_UIPadding12"] = Instance.new("UIPadding");
+	["_UIStroke6"] = Instance.new("UIStroke");
+	["_UIGradient6"] = Instance.new("UIGradient");
+	["_AddCustomModule1"] = Instance.new("TextButton");
+	["_LocalScript2"] = Instance.new("LocalScript");
+	["_UICorner20"] = Instance.new("UICorner");
+	["_UIPadding13"] = Instance.new("UIPadding");
+	["_UIStroke7"] = Instance.new("UIStroke");
+	["_themedColor4"] = Instance.new("StringValue");
+	["_themedColor5"] = Instance.new("StringValue");
+	["_themedColor6"] = Instance.new("StringValue");
+	["_UIScale3"] = Instance.new("UIScale");
+	["_Stub"] = Instance.new("Frame");
+	["_themedColor7"] = Instance.new("StringValue");
+	["_Stub1"] = Instance.new("Frame");
+	["_themedColor8"] = Instance.new("StringValue");
+	["_Toggle"] = Instance.new("Frame");
+	["_TextLabel8"] = Instance.new("TextLabel");
+	["_UIListLayout5"] = Instance.new("UIListLayout");
+	["_Frame2"] = Instance.new("Frame");
+	["_Frame3"] = Instance.new("Frame");
+	["_UICorner21"] = Instance.new("UICorner");
+	["_Toggler"] = Instance.new("TextButton");
+	["_UICorner22"] = Instance.new("UICorner");
+	["_ImageLabel1"] = Instance.new("ImageLabel");
+	["_UIPadding14"] = Instance.new("UIPadding");
+	["_Modules"] = Instance.new("Folder");
+	["_NotificationSample"] = Instance.new("Frame");
+	["_UICorner23"] = Instance.new("UICorner");
+	["_UIStroke8"] = Instance.new("UIStroke");
+	["_UIGradient7"] = Instance.new("UIGradient");
+	["_ImageLabel2"] = Instance.new("ImageLabel");
+	["_TextLabel9"] = Instance.new("TextLabel");
+	["_UITextSizeConstraint"] = Instance.new("UITextSizeConstraint");
+	["_Close"] = Instance.new("ImageButton");
+	["_UICorner24"] = Instance.new("UICorner");
+	["_UIStroke9"] = Instance.new("UIStroke");
+	["_UIScale4"] = Instance.new("UIScale");
+	["_themedColor9"] = Instance.new("StringValue");
+	["_Dialog"] = Instance.new("Frame");
+	["_UICorner25"] = Instance.new("UICorner");
+	["_UIGradient8"] = Instance.new("UIGradient");
+	["_UIPadding15"] = Instance.new("UIPadding");
+	["_UIStroke10"] = Instance.new("UIStroke");
+	["_UIGradient9"] = Instance.new("UIGradient");
+	["_DialogTitle"] = Instance.new("TextLabel");
+	["_UIListLayout6"] = Instance.new("UIListLayout");
+	["_DialogDesc"] = Instance.new("TextLabel");
+	["_UITextSizeConstraint1"] = Instance.new("UITextSizeConstraint");
+}
+
+-- Настройка текста и названий
+Converted["_HubName"].Text = "kiskis cheat"
+if Converted["_TextLabel4"] then Converted["_TextLabel4"].Text = "kiskis cheat" end
+
+-- Автоматический Rainbow HUD (Рендеринг RGB градиентов и обводок)
+task.spawn(function()
+	local RunService = game:GetService("RunService")
+	local speed = 0.5 -- Скорость изменения цветов радуги
+	
+	local uiGradients = {}
+	local uiStrokes = {}
+	
+	-- Собираем все градиенты и обводки для применения радуги
+	for _, obj in pairs(Converted) do
+		if obj:IsA("UIGradient") then
+			table.insert(uiGradients, obj)
+		elseif obj:IsA("UIStroke") then
+			table.insert(uiStrokes, obj)
+		end
+	end
+	
+	RunService.RenderStepped:Connect(function()
+		local t = tick() * speed
+		local color1 = Color3.fromHSV(t % 1, 1, 1)
+		local color2 = Color3.fromHSV((t + 0.5) % 1, 1, 1)
+		
+		-- Обновляем переливание градиентов
+		for _, gradient in ipairs(uiGradients) do
+			gradient.Color = ColorSequence.new(color1, color2)
+		end
+		
+		-- Обновляем цвета обводок меню
+		for _, stroke in ipairs(uiStrokes) do
+			stroke.Color = color1
+		end
+	end)
+end)
