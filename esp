@@ -1,5 +1,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Настройка цветов подсветки
@@ -13,7 +15,6 @@ local COLORS = {
 local function getPlayerRole(player)
     if not player then return "Innocent" end
     
-    -- Проверяем инвентарь и руки игрока
     local backpack = player:FindFirstChild("Backpack")
     local character = player.Character
     
@@ -37,7 +38,6 @@ local function createHighlight(player)
     RunService.RenderStepped:Connect(function()
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
-            -- Проверяем, есть ли уже подсветка, если нет — создаем
             local highlight = char:FindFirstChild("RoleHighlight")
             if not highlight then
                 highlight = Instance.new("Highlight")
@@ -47,7 +47,6 @@ local function createHighlight(player)
                 highlight.OutlineOpacity = 1
             end
             
-            -- Динамически обновляем цвет в зависимости от текущей роли
             local role = getPlayerRole(player)
             highlight.FillColor = COLORS[role]
             highlight.OutlineColor = COLORS[role]
@@ -55,10 +54,33 @@ local function createHighlight(player)
     end)
 end
 
--- Включаем ESP для текущих игроков на сервере
+-- Функция телепортации к выпавшему пистолету
+local function teleportToGun()
+    local gunDrop = Workspace:FindFirstChild("GunDrop")
+    
+    if gunDrop and gunDrop:IsA("Model") then
+        local part = gunDrop:FindFirstChild("Part") or gunDrop:FindFirstChildWhichIsA("BasePart")
+        local character = LocalPlayer.Character
+        
+        if part and character and character:FindFirstChild("HumanoidRootPart") then
+            -- Телепортируем чуть выше пистолета, чтобы персонаж коснулся его и подобрал
+            character.HumanoidRootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 2, 0))
+        end
+    end
+end
+
+-- Отслеживание нажатия клавиши "E"
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    -- gameProcessedEvent нужен, чтобы телепорт не срабатывал, когда вы пишете в чат
+    if not gameProcessedEvent and input.KeyCode == Enum.KeyCode.E then
+        teleportToGun()
+    end
+end)
+
+-- Инициализация ESP для текущих игроков
 for _, player in pairs(Players:GetPlayers()) do
     createHighlight(player)
 end
 
--- Включаем ESP для новых игроков, которые зайдут позже
+-- Инициализация ESP для новых игроков
 Players.PlayerAdded:Connect(createHighlight)
