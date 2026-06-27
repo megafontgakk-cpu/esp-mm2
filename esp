@@ -6,7 +6,7 @@ local SoundService = game:GetService("SoundService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
--- Локальное хранилище состояний
+-- Хранилище настроек
 local Settings = {
     ESP = false,
     Fly = false,
@@ -24,103 +24,189 @@ local COLORS = {
     Innocent = Color3.fromRGB(0, 255, 0)
 }
 
-local flying = false
-local uiVisible = true
+local isFlying = false
 
 ---------------------------------------------------------
--- СОЗДАНИЕ ИНТЕРФЕЙСА С КНОПКОЙ СВОРAЧИВАНИЯ
+-- СОЗДАНИЕ ИНТЕРФЕЙСА С КНОПКАМИ СВОРAЧИВАНИЯ
 ---------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MM2_Fixed_Menu"
+ScreenGui.Name = "MM2_Ultimate_Fixed"
 if gethui then ScreenGui.Parent = gethui() else ScreenGui.Parent = CoreGui end
 
+-- Главное Окно Меню
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 410)
+MainFrame.Size = UDim2.new(0, 250, 0, 360)
 MainFrame.Position = UDim2.new(0, 50, 0, 50)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
+MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0) -- Красная рамка
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(0, 180, 0, 40)
-Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Title.Text = "  MM2 FIXED HACK"
+Title.Size = UDim2.new(1, -60, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.Text = "  MM2 GOD MENU"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- Кнопка сворачивания в углу меню [_]
-local MinimizeBtn = Instance.new("TextButton")
-MinimizeBtn.Size = UDim2.new(0, 70, 0, 40)
-MinimizeBtn.Position = UDim2.new(0, 180, 0, 0)
-MinimizeBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-MinimizeBtn.Text = "Скрыть"
-MinimizeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-MinimizeBtn.Font = Enum.Font.SourceSansBold
-MinimizeBtn.TextSize = 14
-MinimizeBtn.Parent = MainFrame
+-- Маленькая кнопка быстрого сворачивания [_] в углу меню
+local MiniCloseBtn = Instance.new("TextButton")
+MiniCloseBtn.Size = UDim2.new(0, 60, 0, 40)
+MiniCloseBtn.Position = UDim2.new(1, -60, 0, 0)
+MiniCloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MiniCloseBtn.Text = "[ _ ]"
+MiniCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MiniCloseBtn.Font = Enum.Font.SourceSansBold
+MiniCloseBtn.TextSize = 14
+MiniCloseBtn.Parent = MainFrame
 
+-- Отдельная кнопка «РАЗВЕРНУТЬ», которая появляется на экране при скрытии меню
+local OpenMenuBtn = Instance.new("TextButton")
+OpenMenuBtn.Size = UDim2.new(0, 120, 0, 35)
+OpenMenuBtn.Position = UDim2.new(0, 10, 0, 10)
+OpenMenuBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+OpenMenuBtn.BorderSizePixel = 2
+OpenMenuBtn.BorderColor3 = Color3.fromRGB(255, 0, 0)
+OpenMenuBtn.Text = "Развернуть Меню"
+OpenMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenMenuBtn.Font = Enum.Font.SourceSansBold
+OpenMenuBtn.TextSize = 14
+OpenMenuBtn.Visible = false
+OpenMenuBtn.Parent = ScreenGui
+
+-- Контейнер для кнопок функций
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Size = UDim2.new(1, 0, 1, -40)
 ContentFrame.Position = UDim2.new(0, 0, 0, 40)
 ContentFrame.BackgroundTransparency = 1
 ContentFrame.Parent = MainFrame
 
-local function toggleUIVisibility()
-    uiVisible = not uiVisible
-    ContentFrame.Visible = uiVisible
-    if uiVisible then
-        MainFrame.Size = UDim2.new(0, 250, 0, 410)
-        MinimizeBtn.Text = "Скрыть"
-    else
-        MainFrame.Size = UDim2.new(0, 250, 0, 40)
-        MinimizeBtn.Text = "Показать"
-    end
+-- Логика скрытия / показа меню
+local function hideMenu()
+    MainFrame.Visible = false
+    OpenMenuBtn.Visible = true
 end
 
-MinimizeBtn.MouseButton1Click:Connect(toggleUIVisibility)
-UserInputService.InputBegan:Connect(function(input, p)
-    if not p and input.KeyCode == Enum.KeyCode.Insert then toggleUIVisibility() end
+local function showMenu()
+    MainFrame.Visible = true
+    OpenMenuBtn.Visible = false
+end
+
+MiniCloseBtn.MouseButton1Click:Connect(hideMenu)
+OpenMenuBtn.MouseButton1Click:Connect(showMenu)
+
+-- Хоткей на кнопку INSERT для скрытия/показа
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.Insert then
+        if MainFrame.Visible then hideMenu() else showMenu() end
+    end
 end)
 
 local buttonCount = 0
-local function createToggle(text, configKey, callback)
+local function createToggle(text, configKey)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 220, 0, 32)
     btn.Position = UDim2.new(0, 15, 0, 15 + (buttonCount * 38))
-    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    btn.Text = text .. ": ВЫКЛ"
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.Text = text .. " : ВЫКЛ"
     btn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    btn.Font = Enum.Font.SourceSans
+    btn.Font = Enum.Font.SourceSansBold
     btn.TextSize = 14
     btn.Parent = ContentFrame
     
     btn.MouseButton1Click:Connect(function()
         Settings[configKey] = not Settings[configKey]
         if Settings[configKey] then
-            btn.BackgroundColor3 = Color3.fromRGB(50, 90, 50)
-            btn.Text = text .. ": ВКЛ"
+            btn.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
+            btn.Text = text .. " : ВКЛ"
             btn.TextColor3 = Color3.fromRGB(100, 255, 100)
         else
-            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-            btn.Text = text .. ": ВЫКЛ"
+            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            btn.Text = text .. " : ВЫКЛ"
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
-        if callback then callback(Settings[configKey]) end
     end)
     buttonCount = buttonCount + 1
 end
 
 ---------------------------------------------------------
--- ИСПРАВЛЕННАЯ ЛОГИКА ФУНКЦИЙ
+-- ИСПРАВЛЕННАЯ СИСТЕМА ПОЛЕТА И ТЕЛЕПОРТАЦИИ
 ---------------------------------------------------------
 
--- 1. Роли для ESP
+-- 1. СТОПРОЦЕНТНЫЙ ТЕЛЕПОРТ К ПИСТОЛЕТУ (Без возвратов назад)
+local function teleportToGun()
+    local gunDrop = Workspace:FindFirstChild("GunDrop")
+    if gunDrop then
+        local part = gunDrop:FindFirstChild("Part") or gunDrop:FindFirstChildWhichIsA("BasePart")
+        local character = LocalPlayer.Character
+        if part and character and character:FindFirstChild("HumanoidRootPart") then
+            local hrp = character.HumanoidRootPart
+            -- Полностью глушим старую физику, чтобы античит не думал, что мы бежим на сверхскорости
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            task.wait(0.02)
+            -- Перемещаем персонажа точно на пистолет
+            hrp.CFrame = CFrame.new(part.Position + Vector3.new(0, 2, 0))
+        end
+    end
+end
+
+-- 2. ИСПРАВЛЕННЫЙ ПОЛЕТ (Плавный CFrame-Fly, который не ломает персонажа)
+RunService.RenderStepped:Connect(function()
+    if isFlying and Settings.Fly and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        local camera = Workspace.CurrentCamera
+        local moveDir = Vector3.new(0,0,0)
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+        
+        -- Смещаем координаты игрока вручную
+        if moveDir.Magnitude > 0 then
+            hrp.CFrame = hrp.CFrame + (moveDir.Unit * (Settings.FlySpeed / 60))
+        end
+        -- Принудительно отключаем гравитационное падение каждую секунду
+        hrp.AssemblyLinearVelocity = Vector3.zero
+    end
+end)
+
+-- Включение/Выключение режима полета по кнопке X
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    
+    -- Полет на кнопку X
+    if input.KeyCode == Enum.KeyCode.X and Settings.Fly then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChildOfClass("Humanoid") then
+            isFlying = not isFlying
+            char:FindFirstChildOfClass("Humanoid").PlatformStand = isFlying
+            if not isFlying then
+                char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            end
+        end
+    end
+    
+    -- Телепорт на кнопку E
+    if input.KeyCode == Enum.KeyCode.E and Settings.TPOnE then
+        teleportToGun()
+    end
+    
+    -- Ноуклип на кнопку P
+    if input.KeyCode == Enum.KeyCode.P then
+        Settings.Noclip = not Settings.Noclip
+    end
+end)
+
+-- 3. ESP Подсветка ролей
 local function getPlayerRole(player)
     if not player then return "Innocent" end
     local bp = player:FindFirstChild("Backpack")
@@ -152,54 +238,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 2. ИСПРАВЛЕННЫЙ Телепорт к пистолету (Обход возврата назад античитом)
-local function teleportToGun()
-    local gunDrop = Workspace:FindFirstChild("GunDrop")
-    if gunDrop and gunDrop:IsA("Model") then
-        local part = gunDrop:FindFirstChild("Part") or gunDrop:FindFirstChildWhichIsA("BasePart")
-        local character = LocalPlayer.Character
-        if part and character and character:FindFirstChild("HumanoidRootPart") then
-            -- Сброс скорости перед ТП, чтобы игра не кикала за скорость
-            character.HumanoidRootPart.Velocity = Vector3.new(0,0,0)
-            task.wait(0.05)
-            character.HumanoidRootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 3, 0))
-        end
-    end
-end
-
--- 3. ИСПРАВЛЕННЫЙ ПОЛЕТ (Через физическое смещение CFrame вместо Velocity)
-RunService.RenderStepped:Connect(function()
-    if flying and Settings.Fly and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = LocalPlayer.Character.HumanoidRootPart
-        local camera = Workspace.CurrentCamera
-        local moveDir = Vector3.new(0,0,0)
-        
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
-        
-        if moveDir.Magnitude > 0 then
-            hrp.CFrame = hrp.CFrame + (moveDir.Unit * (Settings.FlySpeed / 60))
-        end
-        hrp.Velocity = Vector3.new(0,0,0) -- Обнуляем падение гравитации
-    end
-end)
-
-local function toggleFly()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    
-    flying = not flying
-    if humanoid then
-        humanoid.PlatformStand = flying -- Отключаем стандартную анимацию падения
-    end
-end
-
--- 4. Ноуклип (P)
+-- 4. Ноуклип (Сквозь стены)
 RunService.Stepped:Connect(function()
     if Settings.Noclip and LocalPlayer.Character then
         for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
@@ -216,42 +255,3 @@ RunService.Heartbeat:Connect(function()
         if container and container:FindFirstChild("CoinContainer") then
             for _, coin in pairs(container.CoinContainer:GetChildren()) do
                 if coin:IsA("BasePart") or coin:FindFirstChildWhichIsA("BasePart") then
-                    local coinPart = coin:IsA("BasePart") and coin or coin:FindFirstChildWhichIsA("BasePart")
-                    if (coinPart.Position - hrp.Position).Magnitude < 300 then
-                        coinPart.CFrame = hrp.CFrame
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- 6. GodMode (Анти-нож)
-RunService.Stepped:Connect(function()
-    if Settings.GodMode and LocalPlayer.Character then
-        for _, child in pairs(LocalPlayer.Character:GetChildren()) do
-            if child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" then
-                child.CanTouch = false
-            end
-        end
-    end
-end)
-
--- ИСПРАВЛЕННЫЙ ЗВУК (Глобальное создание звука прямо в камере игрока)
-Workspace.ChildAdded:Connect(function(child)
-    if child.Name == "GunDrop" and Settings.SoundAlert then
-        local sound = Instance.new("Sound")
-        sound.SoundId = "rbxassetid://12222124" -- Стандартный чистый звук колокольчика/клипка
-        sound.Volume = 5                        -- Максимальная громкость
-        sound.Parent = Workspace.CurrentCamera  -- Гарантирует воспроизведение у вас в наушниках
-        sound:Play()
-        task.spawn(function()
-            task.wait(3)
-            sound:Destroy()
-        end)
-    end
-end)
-
----------------------------------------------------------
--- ОБРАБОТКА КЛАВИШ
----------------------------------------------------------
