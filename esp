@@ -1,0 +1,64 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Настройка цветов подсветки
+local COLORS = {
+    Murderer = Color3.fromRGB(255, 0, 0), -- Красный для Убийцы
+    Sheriff = Color3.fromRGB(0, 0, 255),  -- Синий для Шерифа
+    Innocent = Color3.fromRGB(0, 255, 0)  -- Зеленый для Мирных
+}
+
+-- Функция определения роли игрока по оружию
+local function getPlayerRole(player)
+    if not player then return "Innocent" end
+    
+    -- Проверяем инвентарь и руки игрока
+    local backpack = player:FindFirstChild("Backpack")
+    local character = player.Character
+    
+    local function hasItem(name)
+        return (backpack and backpack:FindFirstChild(name)) or (character and character:FindFirstChild(name))
+    end
+    
+    if hasItem("Knife") then
+        return "Murderer"
+    elseif hasItem("Gun") then
+        return "Sheriff"
+    end
+    
+    return "Innocent"
+end
+
+-- Функция создания подсветки сквозь стены
+local function createHighlight(player)
+    if player == LocalPlayer then return end
+    
+    RunService.RenderStepped:Connect(function()
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            -- Проверяем, есть ли уже подсветка, если нет — создаем
+            local highlight = char:FindFirstChild("RoleHighlight")
+            if not highlight then
+                highlight = Instance.new("Highlight")
+                highlight.Name = "RoleHighlight"
+                highlight.Parent = char
+                highlight.FillOpacity = 0.25
+                highlight.OutlineOpacity = 1
+            end
+            
+            -- Динамически обновляем цвет в зависимости от текущей роли
+            local role = getPlayerRole(player)
+            highlight.FillColor = COLORS[role]
+            highlight.OutlineColor = COLORS[role]
+        end
+    end)
+end
+
+-- Включаем ESP для текущих игроков на сервере
+for _, player in pairs(Players:GetPlayers()) do
+    createHighlight(player)
+end
+
+-- Включаем ESP для новых игроков, которые зайдут позже
+Players.PlayerAdded:Connect(createHighlight)
