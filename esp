@@ -1,86 +1,164 @@
+-- Загрузка библиотеки интерфейса Rayfield
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
+local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 
--- Настройка цветов подсветки
-local COLORS = {
-    Murderer = Color3.fromRGB(255, 0, 0), -- Красный для Убийцы
-    Sheriff = Color3.fromRGB(0, 0, 255),  -- Синий для Шерифа
-    Innocent = Color3.fromRGB(0, 255, 0)  -- Зеленый для Мирных
+-- Состояние функций (изменяются через ХУД)
+local Settings = {
+    ESP_Enabled = false,
+    TP_On_E_Enabled = false,
+    Sound_Alert_Enabled = true
 }
 
--- Функция определения роли игрока по оружию
+-- Настройка цветов для ESP
+local COLORS = {
+    Murderer = Color3.fromRGB(255, 0, 0),
+    Sheriff = Color3.fromRGB(0, 0, 255),
+    Innocent = Color3.fromRGB(0, 255, 0)
+}
+
+-- Создание окна ХУДа
+local Window = Rayfield:CreateWindow({
+    Name = "MM2 Helper | Solara",
+    LoadingTitle = "Загрузка интерфейса...",
+    LoadingSubtitle = "by AI Assistant",
+    ConfigurationSaving = { Enabled = false },
+    KeySystem = false
+})
+
+-- Создание вкладки управления
+local MainTab = Window:CreateTab("Главное", 4483362458)
+
+-- ФУНКЦИЯ: Определение роли по оружию
 local function getPlayerRole(player)
     if not player then return "Innocent" end
-    
     local backpack = player:FindFirstChild("Backpack")
     local character = player.Character
-    
     local function hasItem(name)
         return (backpack and backpack:FindFirstChild(name)) or (character and character:FindFirstChild(name))
     end
-    
-    if hasItem("Knife") then
-        return "Murderer"
-    elseif hasItem("Gun") then
-        return "Sheriff"
-    end
-    
+    if hasItem("Knife") then return "Murderer"
+    elseif hasItem("Gun") then return "Sheriff" end
     return "Innocent"
 end
 
--- Функция создания подсветки сквозь стены
+-- ФУНКЦИЯ: Создание подсветки сквозь стены
 local function createHighlight(player)
     if player == LocalPlayer then return end
-    
     RunService.RenderStepped:Connect(function()
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local highlight = char:FindFirstChild("RoleHighlight")
-            if not highlight then
-                highlight = Instance.new("Highlight")
-                highlight.Name = "RoleHighlight"
-                highlight.Parent = char
-                highlight.FillOpacity = 0.25
-                highlight.OutlineOpacity = 1
-            end
             
-            local role = getPlayerRole(player)
-            highlight.FillColor = COLORS[role]
-            highlight.OutlineColor = COLORS[role]
+            -- Если ESP включен в меню
+            if Settings.ESP_Enabled then
+                if not highlight then
+                    highlight = Instance.new("Highlight")
+                    highlight.Name = "RoleHighlight"
+                    highlight.Parent = char
+                    highlight.FillOpacity = 0.25
+                    highlight.OutlineOpacity = 1
+                end
+                local role = getPlayerRole(player)
+                highlight.FillColor = COLORS[role]
+                highlight.OutlineColor = COLORS[role]
+            else
+                -- Если выключен — удаляем подсветку
+                if highlight then highlight:Destroy() end
+            end
         end
     end)
 end
 
--- Функция телепортации к выпавшему пистолету
+-- Инициализация ESP для игроков
+for _, player in pairs(Players:GetPlayers()) do createHighlight(player) end
+Players.PlayerAdded:Connect(createHighlight)
+
+-- ФУНКЦИЯ: Логика телепортации
 local function teleportToGun()
     local gunDrop = Workspace:FindFirstChild("GunDrop")
-    
     if gunDrop and gunDrop:IsA("Model") then
         local part = gunDrop:FindFirstChild("Part") or gunDrop:FindFirstChildWhichIsA("BasePart")
         local character = LocalPlayer.Character
-        
         if part and character and character:FindFirstChild("HumanoidRootPart") then
-            -- Телепортируем чуть выше пистолета, чтобы персонаж коснулся его и подобрал
             character.HumanoidRootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 2, 0))
         end
     end
 end
 
--- Отслеживание нажатия клавиши "E"
-UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-    -- gameProcessedEvent нужен, чтобы телепорт не срабатывал, когда вы пишете в чат
-    if not gameProcessedEvent and input.KeyCode == Enum.KeyCode.E then
+-- Бинд клавиши "E" для телепорта
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.E and Settings.TP_On_E_Enabled then
         teleportToGun()
     end
 end)
 
--- Инициализация ESP для текущих игроков
-for _, player in pairs(Players:GetPlayers()) do
-    createHighlight(player)
-end
+-- ФУНКЦИЯ: Звуковое оповещение при выпадении пистолета
+local soundPlayed = false
+Workspace.ChildAdded:Connect(function(child)
+    if child.Name == "GunDrop" and Settings.Sound_Alert_Enabled then
+        -- Создаем и проигрываем звук оповещения
+        local alertSound = Instance.new("Sound")
+        alertSound.SoundId = "rbxassetid://4590662766" -- ID звука эффекта/колокольчика
+        alertSound.Volume = 2
+        alertSound.Parent = SoundService
+        alertSound:Play()
+        
+        -- Уведомление на экране в ХУДе
+        Rayfield:Notify({
+            Name = "Внимание!",
+            Content = "Пистолет выпал! Нажмите 'E' для телепортации.",
+            Duration = 5,
+            Image = 4483362458,
+        })
+        
+        -- Удаляем объект звука после завершения
+        alertSound.Ended:Connect(function() alertSound:Destroy() end)
+    end
+end)
 
--- Инициализация ESP для новых игроков
-Players.PlayerAdded:Connect(createHighlight)
+
+--- ЭЛЕМЕНТЫ ХУДА (НАСТРОЙКА ФУНКЦИЙ) ---
+
+-- 1. Переключатель для ESP
+MainTab:CreateToggle({
+    Name = "Включить ESP (Подсветка ролей)",
+    CurrentValue = false,
+    Flag = "ToggleESP",
+    Callback = function(Value)
+        Settings.ESP_Enabled = Value
+    end,
+})
+
+-- 2. Переключатель для телепорта по кнопке E
+MainTab:CreateToggle({
+    Name = "Телепорт к пистолету на кнопку 'E'",
+    CurrentValue = false,
+    Flag = "ToggleTP",
+    Callback = function(Value)
+        Settings.TP_On_E_Enabled = Value
+    end,
+})
+
+-- 3. Кнопка мгновенного телепорта (можно нажать мышкой прямо в меню)
+MainTab:CreateButton({
+    Name = "Телепортироваться к пистолету сейчас",
+    Callback = function()
+        teleportToGun()
+    end,
+})
+
+-- 4. Переключатель звукового уведомления
+MainTab:CreateToggle({
+    Name = "Звук при выпадении пистолета",
+    CurrentValue = true,
+    Flag = "ToggleSound",
+    Callback = function(Value)
+        Settings.Sound_Alert_Enabled = Value
+    end,
+})
