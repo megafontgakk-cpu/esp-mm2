@@ -3,15 +3,14 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
 local SoundService = game:GetService("SoundService")
-local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
--- Настройки
+-- Локальное хранилище состояний
 local Settings = {
     ESP = false,
     Fly = false,
-    FlySpeed = 45, -- Снижено до 45 для полной безопасности от киков
+    FlySpeed = 50,
     Noclip = false,
     CoinFarm = false,
     GodMode = false,
@@ -25,207 +24,70 @@ local COLORS = {
     Innocent = Color3.fromRGB(0, 255, 0)
 }
 
-local isFlying = false
+local flying = false
 local flyConnection
+local noclipConnection
 
 ---------------------------------------------------------
--- ИНТЕРФЕЙС С КНОПКОЙ СВОРAЧИВАНИЯ (ПОЛНОСТЬЮ ПЕРЕПИСАН)
+-- СОЗДАНИЕ НЕЗАВИСИМОГО ИНТЕРФЕЙСА (NATIVE GUI)
 ---------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MM2_Bypass_Menu"
+ScreenGui.Name = "MM2_Autonomous_Menu"
 if gethui then ScreenGui.Parent = gethui() else ScreenGui.Parent = CoreGui end
 
--- Главная панель хака
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 260, 0, 360)
-MainFrame.Position = UDim2.new(0.4, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.Size = UDim2.new(0, 250, 0, 380)
+MainFrame.Position = UDim2.new(0, 50, 0, 50)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(255, 30, 30)
+MainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
--- Шапка
-local TopBar = Instance.new("Frame")
-TopBar.Size = UDim2.new(1, 0, 0, 35)
-TopBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-TopBar.Parent = MainFrame
-
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -50, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "MM2 BYPASS MENU"
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Title.Text = "MM2 ULTIMATE HACK"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 15
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = TopBar
+Title.TextSize = 18
+Title.Parent = MainFrame
 
--- ФИЗИЧЕСКАЯ КНОПКА СВОРAЧИВАНИЯ [_]
-local HideBtn = Instance.new("TextButton")
-HideBtn.Size = UDim2.new(0, 40, 1, 0)
-HideBtn.Position = UDim2.new(1, -40, 0, 0)
-HideBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-HideBtn.Text = "_"
-HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-HideBtn.Font = Enum.Font.SourceSansBold
-HideBtn.TextSize = 16
-HideBtn.Parent = TopBar
-
--- ОТДЕЛЬНАЯ КНОПКА «ОТКРЫТЬ», КОГДА МЕНЮ СВЕРНУТО
-local OpenBtn = Instance.new("TextButton")
-OpenBtn.Size = UDim2.new(0, 130, 0, 35)
-OpenBtn.Position = UDim2.new(0, 10, 0, 10)
-OpenBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-OpenBtn.BorderSizePixel = 2
-OpenBtn.BorderColor3 = Color3.fromRGB(255, 30, 30)
-OpenBtn.Text = "Открыть хак"
-OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-OpenBtn.Font = Enum.Font.SourceSansBold
-OpenBtn.TextSize = 14
-OpenBtn.Visible = false
-OpenBtn.Parent = ScreenGui
-
-local Content = Instance.new("Frame")
-Content.Size = UDim2.new(1, 0, 1, -35)
-Content.Position = UDim2.new(0, 0, 0, 35)
-Content.BackgroundTransparency = 1
-Content.Parent = MainFrame
-
--- Логика переключения видимости
-local function toggleUI()
-    if MainFrame.Visible then
-        MainFrame.Visible = false
-        OpenBtn.Visible = true
-    else
-        MainFrame.Visible = true
-        OpenBtn.Visible = false
-    end
-end
-
-HideBtn.MouseButton1Click:Connect(toggleUI)
-OpenBtn.MouseButton1Click:Connect(toggleUI)
-
--- Сворачивание на кнопку Insert
-UserInputService.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.Insert then
-        toggleUI()
-    end
-end)
-
-local togglesCount = 0
-local function createToggle(text, configKey)
+-- Шаблон для создания кнопок-переключателей
+local buttonCount = 0
+local function createToggle(text, configKey, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 32)
-    btn.Position = UDim2.new(0, 10, 0, 12 + (togglesCount * 38))
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    btn.Text = text .. " : ВЫКЛ"
-    btn.TextColor3 = Color3.fromRGB(255, 80, 80)
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 13
-    btn.Parent = Content
+    btn.Size = UDim2.new(0, 220, 0, 35)
+    btn.Position = UDim2.new(0, 15, 0, 50 + (buttonCount * 42))
+    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    btn.Text = text .. ": ВЫКЛ"
+    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 15
+    btn.Parent = MainFrame
     
     btn.MouseButton1Click:Connect(function()
         Settings[configKey] = not Settings[configKey]
         if Settings[configKey] then
-            btn.BackgroundColor3 = Color3.fromRGB(30, 70, 30)
-            btn.Text = text .. " : ВКЛ"
-            btn.TextColor3 = Color3.fromRGB(80, 255, 80)
+            btn.BackgroundColor3 = Color3.fromRGB(60, 100, 60)
+            btn.Text = text .. ": ВКЛ"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
         else
-            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            btn.Text = text .. " : ВЫКЛ"
-            btn.TextColor3 = Color3.fromRGB(255, 80, 80)
+            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+            btn.Text = text .. ": ВЫКЛ"
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
+        if callback then callback(Settings[configKey]) end
     end)
-    togglesCount = togglesCount + 1
+    buttonCount = buttonCount + 1
 end
 
 ---------------------------------------------------------
--- ОБХОД АНТИЧИТА (ОБНОВЛЕННЫЕ ФУНКЦИИ)
+-- ЛОГИКА ФУНКЦИЙ
 ---------------------------------------------------------
 
--- 1. БЕЗОПАСНЫЙ ТЕЛЕПОРТ К ПИСТОЛЕТУ ЧЕРЕЗ TWEEN (Летит сквозь стены на высокой скорости)
-local function teleportToGun()
-    local gunDrop = Workspace:FindFirstChild("GunDrop")
-    if gunDrop then
-        local part = gunDrop:FindFirstChild("Part") or gunDrop:FindFirstChildWhichIsA("BasePart")
-        local character = LocalPlayer.Character
-        if part and character and character:FindFirstChild("HumanoidRootPart") then
-            local hrp = character.HumanoidRootPart
-            
-            -- Рассчитываем время полета до пистолета на основе расстояния
-            local distance = (part.Position - hrp.Position).Magnitude
-            local duration = distance / 150 -- Безопасная скорость левитации
-            
-            local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-            local tween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(part.Position + Vector3.new(0, 2, 0))})
-            
-            -- Временно включаем Ноуклип во время полета к пистолету
-            local tempNoclip = RunService.Stepped:Connect(function()
-                for _, p in pairs(character:GetDescendants()) do
-                    if p:IsA("BasePart") then p.CanCollide = false end
-                end
-            end)
-            
-            tween:Play()
-            tween.Completed:Connect(function()
-                tempNoclip:Disconnect()
-                hrp.AssemblyLinearVelocity = Vector3.zero
-            end)
-        end
-    end
-end
-
--- 2. СТАБИЛЬНЫЙ ПОЛЕТ (БЕЗ VELOCITY — ОБХОД ЗАВИСАНИЯ)
-RunService.RenderStepped:Connect(function()
-    if isFlying and Settings.Fly and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = LocalPlayer.Character.HumanoidRootPart
-        local camera = Workspace.CurrentCamera
-        local moveDir = Vector3.new(0,0,0)
-        
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
-        
-        if moveDir.Magnitude > 0 then
-            hrp.CFrame = hrp.CFrame + (moveDir.Unit * (Settings.FlySpeed / 60))
-        end
-        hrp.AssemblyLinearVelocity = Vector3.zero -- Отключаем гравитацию, убирает лаги падения
-    end
-end)
-
--- Отслеживание горячих клавиш X, P, E
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    
-    -- Полет на кнопку X
-    if input.KeyCode == Enum.KeyCode.X and Settings.Fly then
-        local char = LocalPlayer.Character
-        if char then
-            isFlying = not isFlying
-            -- Переключаем состояние физики, обходя Byfron
-            char:FindFirstChildOfClass("Humanoid").PlatformStand = isFlying
-            if not isFlying then hrp.AssemblyLinearVelocity = Vector3.zero end
-        end
-    end
-    
-    -- Телепорт на кнопку E
-    if input.KeyCode == Enum.KeyCode.E and Settings.TPOnE then
-        teleportToGun()
-    end
-    
-    -- Ноуклип на кнопку P
-    if input.KeyCode == Enum.KeyCode.P then
-        Settings.Noclip = not Settings.Noclip
-    end
-end)
-
--- 3. ESP Подсветка
+-- 1. Исправленный ESP на роли
 local function getPlayerRole(player)
     if not player then return "Innocent" end
     local bp = player:FindFirstChild("Backpack")
@@ -257,14 +119,130 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 4. Ноуклип
-RunService.Stepped:Connect(function()
-    if Settings.Noclip and LocalPlayer.Character then
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
+-- 2. Телепорт к пистолету
+local function teleportToGun()
+    local gunDrop = Workspace:FindFirstChild("GunDrop")
+    if gunDrop and gunDrop:IsA("Model") then
+        local part = gunDrop:FindFirstChild("Part") or gunDrop:FindFirstChildWhichIsA("BasePart")
+        local character = LocalPlayer.Character
+        if part and character and character:FindFirstChild("HumanoidRootPart") then
+            character.HumanoidRootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 2, 0))
+        end
+    end
+end
+
+-- 3. Полет (Fly) — На кнопку X (Английскую)
+local function toggleFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not humanoid then return end
+
+    flying = not flying
+    if flying then
+        humanoid.PlatformStand = true
+        local camera = Workspace.CurrentCamera
+        flyConnection = RunService.RenderStepped:Connect(function()
+            local moveDir = Vector3.new(0,0,0)
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+            hrp.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * Settings.FlySpeed or Vector3.new(0,0,0)
+            hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
+        end)
+    else
+        if flyConnection then flyConnection:Disconnect() end
+        humanoid.PlatformStand = false
+        hrp.Velocity = Vector3.new(0,0,0)
+    end
+end
+
+-- 4. Ноуклип (Noclip) — На кнопку P (Английскую)
+local function updateNoclip()
+    if Settings.Noclip then
+        noclipConnection = RunService.Stepped:Connect(function()
+            if Settings.Noclip and LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+    else
+        if noclipConnection then noclipConnection:Disconnect() end
+        if LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then part.CanCollide = true end
+            end
+        end
+    end
+end
+
+-- 5. Авто-сбор монет (Coin Farm)
+RunService.Heartbeat:Connect(function()
+    if Settings.CoinFarm and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        local container = Workspace:FindFirstChild("Normal") or Workspace:FindFirstChild("Innocent")
+        if container and container:FindFirstChild("CoinContainer") then
+            for _, coin in pairs(container.CoinContainer:GetChildren()) do
+                if coin:IsA("BasePart") or coin:FindFirstChildWhichIsA("BasePart") then
+                    local coinPart = coin:IsA("BasePart") and coin or coin:FindFirstChildWhichIsA("BasePart")
+                    if (coinPart.Position - hrp.Position).Magnitude < 250 then
+                        coinPart.CFrame = hrp.CFrame
+                    end
+                end
+            end
         end
     end
 end)
 
--- 5. Автофарм монет
-RunService.Heartbeat:Connect(function()
+-- 6. Бессмертие от ножа (GodMode)
+RunService.Stepped:Connect(function()
+    if Settings.GodMode and LocalPlayer.Character then
+        for _, child in pairs(LocalPlayer.Character:GetChildren()) do
+            if child:IsA("BasePart") and child.Name ~= "HumanoidRootPart" then
+                child.CanTouch = false
+            end
+        end
+    else
+        if LocalPlayer.Character then
+            for _, child in pairs(LocalPlayer.Character:GetChildren()) do
+                if child:IsA("BasePart") then child.CanTouch = true end
+            end
+        end
+    end
+end)
+
+-- Звуковое оповещение и спавн GunDrop
+Workspace.ChildAdded:Connect(function(child)
+    if child.Name == "GunDrop" and Settings.SoundAlert then
+        local alertSound = Instance.new("Sound")
+        alertSound.SoundId = "rbxassetid://4590662766"
+        alertSound.Volume = 2
+        alertSound.Parent = SoundService
+        alertSound:Play()
+        alertSound.Ended:Connect(function() alertSound:Destroy() end)
+    end
+end)
+
+---------------------------------------------------------
+-- СВЯЗЫВАНИЕ КЛАВИШ (БИНДЫ)
+---------------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.E and Settings.TPOnE then teleportToGun() end
+    if input.KeyCode == Enum.KeyCode.X and Settings.Fly then toggleFly() end -- Полет на X
+    if input.KeyCode == Enum.KeyCode.P then -- Ноуклип на P (переключает тумблер в меню)
+        Settings.Noclip = not Settings.Noclip
+        updateNoclip()
+    end
+end)
+
+---------------------------------------------------------
+-- ИНИЦИАЛИЗАЦИЯ ТУМБЛЕРОВ В ГРАФИЧЕСКОМ МЕНЮ
+---------------------------------------------------------
+createToggle("Подсветка ролей (ESP)", "ESP")
+createToggle("ТП к песту на кнопку 'E'", "TPOnE")
