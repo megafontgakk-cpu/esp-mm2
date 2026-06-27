@@ -1,5 +1,4 @@
--- Загрузка библиотеки интерфейса Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu'))()
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,46 +7,54 @@ local UserInputService = game:GetService("UserInputService")
 local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 
--- Состояние функций (изменяются через ХУД)
+-- Состояние функций
 local Settings = {
     ESP_Enabled = false,
     TP_On_E_Enabled = false,
-    Sound_Alert_Enabled = true
+    Sound_Alert_Enabled = true,
+    Fly_Enabled = false,
+    Fly_Speed = 50 -- Установлено по умолчанию на 50
 }
 
--- Настройка цветов для ESP
+-- Цвета ролей
 local COLORS = {
     Murderer = Color3.fromRGB(255, 0, 0),
     Sheriff = Color3.fromRGB(0, 0, 255),
     Innocent = Color3.fromRGB(0, 255, 0)
 }
 
--- Создание окна ХУДа
+-- Переменные для полета и ноуклипа
+local flying = false
+local flyConnection
+local noclipConnection
+
 local Window = Rayfield:CreateWindow({
-    Name = "MM2 Helper | Solara",
-    LoadingTitle = "Загрузка интерфейса...",
+    Name = "MM2 Helper Pro | Solara",
+    LoadingTitle = "Загрузка систем...",
     LoadingSubtitle = "by AI Assistant",
     ConfigurationSaving = { Enabled = false },
     KeySystem = false
 })
 
--- Создание вкладки управления
 local MainTab = Window:CreateTab("Главное", 4483362458)
 
--- ФУНКЦИЯ: Определение роли по оружию
+-- Функция определения ролей
 local function getPlayerRole(player)
     if not player then return "Innocent" end
     local backpack = player:FindFirstChild("Backpack")
-    local character = player.Character
-    local function hasItem(name)
-        return (backpack and backpack:FindFirstChild(name)) or (character and character:FindFirstChild(name))
+    if backpack then
+        if backpack:FindFirstChild("Knife") then return "Murderer" end
+        if backpack:FindFirstChild("Gun") then return "Sheriff" end
     end
-    if hasItem("Knife") then return "Murderer"
-    elseif hasItem("Gun") then return "Sheriff" end
+    local char = player.Character
+    if char then
+        if char:FindFirstChild("Knife") then return "Murderer" end
+        if char:FindFirstChild("Gun") then return "Sheriff" end
+    end
     return "Innocent"
 end
 
--- ФУНКЦИЯ: Создание подсветки сквозь стены
+-- Функция ESP Подсветки
 local function createHighlight(player)
     if player == LocalPlayer then return end
     RunService.RenderStepped:Connect(function()
@@ -55,31 +62,28 @@ local function createHighlight(player)
         if char and char:FindFirstChild("HumanoidRootPart") then
             local highlight = char:FindFirstChild("RoleHighlight")
             
-            -- Если ESP включен в меню
             if Settings.ESP_Enabled then
                 if not highlight then
                     highlight = Instance.new("Highlight")
                     highlight.Name = "RoleHighlight"
                     highlight.Parent = char
-                    highlight.FillOpacity = 0.25
+                    highlight.FillOpacity = 0.3
                     highlight.OutlineOpacity = 1
                 end
                 local role = getPlayerRole(player)
                 highlight.FillColor = COLORS[role]
                 highlight.OutlineColor = COLORS[role]
             else
-                -- Если выключен — удаляем подсветку
                 if highlight then highlight:Destroy() end
             end
         end
     end)
 end
 
--- Инициализация ESP для игроков
 for _, player in pairs(Players:GetPlayers()) do createHighlight(player) end
 Players.PlayerAdded:Connect(createHighlight)
 
--- ФУНКЦИЯ: Логика телепортации
+-- Функция Телепорта к пистолету
 local function teleportToGun()
     local gunDrop = Workspace:FindFirstChild("GunDrop")
     if gunDrop and gunDrop:IsA("Model") then
@@ -91,74 +95,136 @@ local function teleportToGun()
     end
 end
 
--- Бинд клавиши "E" для телепорта
+-- Функция управления Полетом и Ноуклипом
+local function toggleFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not humanoid then return end
+
+    flying = not flying
+    
+    if flying then
+        humanoid.PlatformStand = true
+        local camera = Workspace.CurrentCamera
+        
+        -- Полет через RenderStepped
+        flyConnection = RunService.RenderStepped:Connect(function()
+            local moveDir = Vector3.new(0,0,0)
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+            
+            hrp.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * Settings.Fly_Speed or Vector3.new(0,0,0)
+            hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
+        end)
+        
+        -- Ноуклип (отключение коллизий всех частей тела со стенами)
+        noclipConnection = RunService.Stepped:Connect(function()
+            if flying and LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+        
+        Rayfield:Notify({Name = "Полет и Ноуклип", Content = "Активировано! Стены отключены (Кнопка X)", Duration = 2})
+    else
+        -- Корректное отключение полета и возврат физики тела
+        if flyConnection then flyConnection:Disconnect() end
+        if noclipConnection then noclipConnection:Disconnect() end
+        humanoid.PlatformStand = false
+        hrp.Velocity = Vector3.new(0,0,0)
+        
+        -- Возвращаем коллизию персонажу
+        if LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.CanCollide = true
+                end
+            end
+        end
+        Rayfield:Notify({Name = "Полет и Ноуклип", Content = "Деактивировано! Стены снова твердые", Duration = 2})
+    end
+end
+
+-- Обработка клавиш E и X
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.E and Settings.TP_On_E_Enabled then
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.E and Settings.TP_On_E_Enabled then
         teleportToGun()
+    end
+    if input.KeyCode == Enum.KeyCode.X and Settings.Fly_Enabled then
+        toggleFly()
     end
 end)
 
--- ФУНКЦИЯ: Звуковое оповещение при выпадении пистолета
-local soundPlayed = false
+-- Звук при выпадении пистолета
 Workspace.ChildAdded:Connect(function(child)
     if child.Name == "GunDrop" and Settings.Sound_Alert_Enabled then
-        -- Создаем и проигрываем звук оповещения
         local alertSound = Instance.new("Sound")
-        alertSound.SoundId = "rbxassetid://4590662766" -- ID звука эффекта/колокольчика
+        alertSound.SoundId = "rbxassetid://4590662766"
         alertSound.Volume = 2
         alertSound.Parent = SoundService
         alertSound:Play()
         
-        -- Уведомление на экране в ХУДе
         Rayfield:Notify({
             Name = "Внимание!",
             Content = "Пистолет выпал! Нажмите 'E' для телепортации.",
             Duration = 5,
             Image = 4483362458,
         })
-        
-        -- Удаляем объект звука после завершения
         alertSound.Ended:Connect(function() alertSound:Destroy() end)
     end
 end)
 
+--- ЭЛЕМЕНТЫ ХУДА ---
 
---- ЭЛЕМЕНТЫ ХУДА (НАСТРОЙКА ФУНКЦИЙ) ---
-
--- 1. Переключатель для ESP
 MainTab:CreateToggle({
     Name = "Включить ESP (Подсветка ролей)",
     CurrentValue = false,
-    Flag = "ToggleESP",
-    Callback = function(Value)
-        Settings.ESP_Enabled = Value
-    end,
+    Callback = function(Value) Settings.ESP_Enabled = Value end,
 })
 
--- 2. Переключатель для телепорта по кнопке E
 MainTab:CreateToggle({
     Name = "Телепорт к пистолету на кнопку 'E'",
     CurrentValue = false,
-    Flag = "ToggleTP",
-    Callback = function(Value)
-        Settings.TP_On_E_Enabled = Value
-    end,
+    Callback = function(Value) Settings.TP_On_E_Enabled = Value end,
 })
 
--- 3. Кнопка мгновенного телепорта (можно нажать мышкой прямо в меню)
 MainTab:CreateButton({
     Name = "Телепортироваться к пистолету сейчас",
-    Callback = function()
-        teleportToGun()
-    end,
+    Callback = function() teleportToGun() end,
 })
 
--- 4. Переключатель звукового уведомления
 MainTab:CreateToggle({
     Name = "Звук при выпадении пистолета",
     CurrentValue = true,
-    Flag = "ToggleSound",
-    Callback = function(Value)
-        Settings.Sound_Alert_Enabled = Value
+    Callback = function(Value) Settings.Sound_Alert_Enabled = Value end,
+})
+
+MainTab:CreateToggle({
+    Name = "Разрешить полет + Ноуклип (Кнопка 'X')",
+    CurrentValue = false,
+    Callback = function(Value) 
+        Settings.Fly_Enabled = Value 
+        if not Value and flying then toggleFly() end
     end,
+})
+
+-- Слайдер настроен по умолчанию строго на 50, как вы и просили
+MainTab:CreateSlider({
+    Name = "Скорость полета",
+    Min = 20,
+    Max = 150,
+    CurrentValue = 50,
+    Increment = 5,
+    Callback = function(Value) Settings.Fly_Speed = Value end,
 })
