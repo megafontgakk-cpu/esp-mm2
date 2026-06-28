@@ -13,9 +13,27 @@ local Settings = {
     Noclip = false,
     CoinFarm = false,
     AutoGetGun = false,
-    GunDropESP = false,      -- НОВОЕ: ESP на брошенный пистолет
-    TrapDetection = false    -- НОВОЕ: обнаружение ловушек
+    GunDropESP = false,
+    TrapDetection = false
 }
+
+-- ============================================
+-- СИСТЕМА БИНДОВ (клавиши по умолчанию)
+-- ============================================
+local Keybinds = {
+    ESP = Enum.KeyCode.Z,
+    Fly = Enum.KeyCode.F,
+    Noclip = Enum.KeyCode.V,
+    CoinFarm = Enum.KeyCode.C,
+    AutoGetGun = Enum.KeyCode.G,
+    GunDropESP = Enum.KeyCode.X,
+    TrapDetection = Enum.KeyCode.T
+}
+
+-- Хранилище кнопок для обновления текста при нажатии клавиши
+local ToggleButtons = {}
+-- Флаг: ожидаем ли мы нажатия клавиши для перебинда
+local waitingForBind = nil
 
 local COLORS = {
     Murderer = Color3.fromRGB(255, 0, 0),
@@ -35,7 +53,7 @@ ScreenGui.ResetOnSpawn = false
 if gethui then ScreenGui.Parent = gethui() else ScreenGui.Parent = CoreGui end
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 400)  -- увеличена высота под новые кнопки
+MainFrame.Size = UDim2.new(0, 350, 0, 420)
 MainFrame.Position = UDim2.new(0, 50, 0, 50)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.BorderSizePixel = 2
@@ -47,10 +65,10 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Title.Text = "MM2 CHEAT"
+Title.Text = "MM2 CHEAT MENU"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 18
+Title.TextSize = 13
 Title.Parent = MainFrame
 
 local CollapseBtn = Instance.new("TextButton")
@@ -91,7 +109,7 @@ OpenBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ============================================
--- СИСТЕМА УВЕДОМЛЕНИЙ (замена fu.notification)
+-- СИСТЕМА УВЕДОМЛЕНИЙ
 -- ============================================
 local NotificationFrame = Instance.new("Frame")
 NotificationFrame.Size = UDim2.new(0, 300, 1, 0)
@@ -121,10 +139,38 @@ local function notify(text)
 end
 
 -- ============================================
--- ШАБЛОН КНОПОК
+-- ФУНКЦИЯ ОБНОВЛЕНИЯ ТЕКСТА КНОПКИ
+-- ============================================
+local function updateButtonVisual(configKey)
+    local data = ToggleButtons[configKey]
+    if not data then return end
+    local btn = data.btn
+    local text = data.label
+
+    local keyName = Keybinds[configKey] and Keybinds[configKey].Name or "—"
+
+    if Settings[configKey] then
+        btn.BackgroundColor3 = Color3.fromRGB(60, 100, 60)
+        btn.Text = text .. ": ВКЛ"
+        btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        btn.Text = text .. ": ВЫКЛ"
+        btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+
+    -- Обновляем текст бинд-кнопки
+    if data.bindBtn then
+        data.bindBtn.Text = "[" .. keyName .. "]"
+    end
+end
+
+-- ============================================
+-- ШАБЛОН КНОПОК С БИНДАМИ
 -- ============================================
 local buttonCount = 0
 local function createToggle(text, configKey, callback)
+    -- Основная кнопка
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 220, 0, 35)
     btn.Position = UDim2.new(0, 15, 0, 50 + (buttonCount * 42))
@@ -135,19 +181,48 @@ local function createToggle(text, configKey, callback)
     btn.TextSize = 15
     btn.Parent = MainFrame
 
-    btn.MouseButton1Click:Connect(function()
+    -- Кнопка для смены бинда (справа от основной)
+    local bindBtn = Instance.new("TextButton")
+    bindBtn.Size = UDim2.new(0, 80, 0, 35)
+    bindBtn.Position = UDim2.new(0, 245, 0, 50 + (buttonCount * 42))
+    bindBtn.BackgroundColor3 = Color3.fromRGB(60, 50, 80)
+    bindBtn.Font = Enum.Font.SourceSansBold
+    bindBtn.TextSize = 14
+    bindBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+    bindBtn.Parent = MainFrame
+
+    local keyName = Keybinds[configKey] and Keybinds[configKey].Name or "—"
+    bindBtn.Text = "[" .. keyName .. "]"
+
+    -- Сохраняем данные
+    ToggleButtons[configKey] = {
+        btn = btn,
+        bindBtn = bindBtn,
+        label = text,
+        callback = callback
+    }
+
+    -- Функция переключения
+    local function doToggle()
         Settings[configKey] = not Settings[configKey]
-        if Settings[configKey] then
-            btn.BackgroundColor3 = Color3.fromRGB(60, 100, 60)
-            btn.Text = text .. ": ВКЛ"
-            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-            btn.Text = text .. ": ВЫКЛ"
-            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        end
+        updateButtonVisual(configKey)
         if callback then callback(Settings[configKey]) end
+    end
+
+    -- Клик по основной кнопке — переключить
+    btn.MouseButton1Click:Connect(function()
+        doToggle()
     end)
+
+    -- Клик по бинд-кнопке — ждём новую клавишу
+    bindBtn.MouseButton1Click:Connect(function()
+        if waitingForBind then return end -- уже ждём
+        waitingForBind = configKey
+        bindBtn.Text = "[...]"
+        bindBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 40)
+        notify("Нажмите клавишу для: " .. text)
+    end)
+
     buttonCount = buttonCount + 1
 end
 
@@ -155,12 +230,54 @@ end
 -- СОЗДАНИЕ КНОПОК
 -- ============================================
 createToggle("Подсветка игроков (ESP)", "ESP")
-createToggle("Режим полета (Fly)", "Fly", function(val) toggleFly(val) end)
+createToggle("Режим полёта (Fly)", "Fly", function(val) toggleFly(val) end)
 createToggle("Noclip (сквозь стены)", "Noclip", function(val) updateNoclip(val) end)
 createToggle("Авто-фарм монет", "CoinFarm")
 createToggle("Авто-подбор пистолета", "AutoGetGun")
-createToggle("ESP брошенного оружия", "GunDropESP")    -- НОВОЕ
-createToggle("Обнаружение ловушек", "TrapDetection")   -- НОВОЕ
+createToggle("ESP брошенного оружия", "GunDropESP")
+createToggle("Обнаружение ловушек", "TrapDetection")
+
+-- ============================================
+-- ОБРАБОТКА НАЖАТИЙ КЛАВИШ (БИНДЫ)
+-- ============================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+
+    -- Если ждём нового бинда — назначаем клавишу
+    if waitingForBind then
+        local configKey = waitingForBind
+        waitingForBind = nil
+
+        Keybinds[configKey] = input.KeyCode
+        local data = ToggleButtons[configKey]
+        if data and data.bindBtn then
+            data.bindBtn.BackgroundColor3 = Color3.fromRGB(60, 50, 80)
+        end
+        updateButtonVisual(configKey)
+        notify("Бинд установлен: [" .. input.KeyCode.Name .. "] → " .. (data and data.label or configKey))
+        return
+    end
+
+    -- Проверяем все бинды
+    for configKey, keyCode in pairs(Keybinds) do
+        if input.KeyCode == keyCode then
+            local data = ToggleButtons[configKey]
+            if data then
+                Settings[configKey] = not Settings[configKey]
+                updateButtonVisual(configKey)
+                if data.callback then
+                    data.callback(Settings[configKey])
+                end
+
+                -- Уведомление при переключении через бинд
+                local state = Settings[configKey] and "ВКЛ" or "ВЫКЛ"
+                notify(data.label .. " → " .. state .. "  [" .. keyCode.Name .. "]")
+            end
+            break
+        end
+    end
+end)
 
 -- ============================================
 -- ОПРЕДЕЛЕНИЕ РОЛЕЙ
@@ -223,23 +340,19 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================
--- DROPPED GUN ESP + TRAP DETECTION (ВСТРОЕНО)
+-- DROPPED GUN ESP + TRAP DETECTION
 -- ============================================
--- Хранилище хайлайтов для GunDrop и Trap
 local gunHighlight = nil
 local gunBillboard = nil
 local trapHighlights = {}
 
--- Когда новый объект появляется в Workspace
 Workspace.DescendantAdded:Connect(function(ch)
-    -- === ОБНАРУЖЕНИЕ ЛОВУШЕК ===
     if Settings.TrapDetection
         and ch.Name == "Trap"
         and (ch.Parent:IsA("Folder") or ch.Parent:IsA("Model"))
     then
-        ch.Transparency = 0  -- делаем ловушку видимой
+        ch.Transparency = 0
 
-        -- Создаём хайлайт для ловушки
         local trapHL = Instance.new("Highlight")
         trapHL.Name = "TrapHighlight"
         trapHL.Adornee = ch
@@ -249,7 +362,6 @@ Workspace.DescendantAdded:Connect(function(ch)
         trapHL.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         trapHL.Parent = ScreenGui
 
-        -- Billboard с текстом "TRAP!"
         local trapBB = Instance.new("BillboardGui")
         trapBB.Name = "TrapBillboard"
         trapBB.Adornee = ch
@@ -272,13 +384,10 @@ Workspace.DescendantAdded:Connect(function(ch)
         notify("Убийца поставил ловушку!")
     end
 
-    -- === ESP БРОШЕННОГО ПИСТОЛЕТА ===
     if Settings.GunDropESP and ch.Name == "GunDrop" then
-        -- Убираем старый хайлайт если есть
         if gunHighlight then gunHighlight:Destroy() end
         if gunBillboard then gunBillboard:Destroy() end
 
-        -- Highlight на пистолет
         gunHighlight = Instance.new("Highlight")
         gunHighlight.Name = "GunDropHighlight"
         gunHighlight.Adornee = ch
@@ -289,7 +398,6 @@ Workspace.DescendantAdded:Connect(function(ch)
         gunHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         gunHighlight.Parent = ScreenGui
 
-        -- Billboard с текстом
         gunBillboard = Instance.new("BillboardGui")
         gunBillboard.Name = "GunDropBillboard"
         gunBillboard.Adornee = ch
@@ -301,32 +409,29 @@ Workspace.DescendantAdded:Connect(function(ch)
         local gunLabel = Instance.new("TextLabel")
         gunLabel.Size = UDim2.new(1, 0, 1, 0)
         gunLabel.BackgroundTransparency = 1
-        gunLabel.Text = "🔫 DROPPED GUN!"
+        gunLabel.Text = " ДРОПНУТ ПЕСТ!"
         gunLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
         gunLabel.Font = Enum.Font.SourceSansBold
         gunLabel.TextSize = 18
         gunLabel.TextStrokeTransparency = 0
         gunLabel.Parent = gunBillboard
 
-        notify("Пистолет брошен! Ищи жёлтую подсветку.")
+        notify("Пистолет дропнут! Ищи жёлтую подсветку.")
 
-        -- === АВТО-ПОДБОР ПИСТОЛЕТА ===
         if Settings.AutoGetGun then
             notify("Авто-подбор: ожидание 1 сек...")
             task.delay(1, function()
                 local character = LocalPlayer.Character
                 if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-                -- Проверяем, что GunDrop всё ещё существует
                 local gunDrop = Workspace:FindFirstChild("GunDrop", true)
                 if not gunDrop then
-                    notify("Пистолет уже подобран кем-то.")
+                    notify("Пистолет уже подобрал кто то.")
                     return
                 end
 
                 local hrp = character.HumanoidRootPart
                 local previousCFrame = hrp.CFrame
 
-                -- Находим позицию пистолета
                 local targetPart = gunDrop
                 if gunDrop:IsA("Model") then
                     targetPart = gunDrop:FindFirstChildWhichIsA("BasePart") or gunDrop.PrimaryPart
@@ -337,7 +442,6 @@ Workspace.DescendantAdded:Connect(function(ch)
                     hrp.CFrame = gunDrop.CFrame
                 end
 
-                -- Ждём пока подберём
                 local bp = LocalPlayer.Backpack
                 local timeout = tick() + 3
                 while tick() < timeout do
@@ -345,7 +449,6 @@ Workspace.DescendantAdded:Connect(function(ch)
                     task.wait(0.1)
                 end
 
-                -- Возвращаемся на место
                 if character and character:FindFirstChild("HumanoidRootPart") then
                     hrp.CFrame = previousCFrame
                 end
@@ -355,10 +458,8 @@ Workspace.DescendantAdded:Connect(function(ch)
     end
 end)
 
--- Когда объект удаляется (кто-то подобрал пистолет)
 Workspace.DescendantRemoving:Connect(function(ch)
     if ch.Name == "GunDrop" then
-        -- Убираем ESP пистолета
         if gunHighlight then gunHighlight:Destroy(); gunHighlight = nil end
         if gunBillboard then gunBillboard:Destroy(); gunBillboard = nil end
 
@@ -372,7 +473,6 @@ Workspace.DescendantRemoving:Connect(function(ch)
         end)
     end
 
-    -- Убираем ESP ловушки если её удалили
     if ch.Name == "Trap" then
         for i, data in ipairs(trapHighlights) do
             if data.obj == ch then
@@ -464,30 +564,7 @@ function updateNoclip(active)
     end
 end
 
--- ============================================
--- АВТО-ФАРМ МОНЕТ + ЗАПАСНОЙ АВТО-ПОДБОР (Heartbeat)
--- ============================================
-RunService.Heartbeat:Connect(function()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = character.HumanoidRootPart
-
-    -- Авто-фарм монет
-    if Settings.CoinFarm then
-        local container = Workspace:FindFirstChild("Normal")
-            or Workspace:FindFirstChild("Innocent")
-        if container and container:FindFirstChild("CoinContainer") then
-            for _, coin in pairs(container.CoinContainer:GetChildren()) do
-                local coinPart = nil
-                if coin:IsA("BasePart") then
-                    coinPart = coin
-                else
-                    coinPart = coin:FindFirstChildWhichIsA("BasePart")
-                end
-                if coinPart and (coinPart.Position - hrp.Position).Magnitude < 250 then
-                    coinPart.CFrame = hrp.CFrame
-                end
-            end
-        end
-    end
-end)
+notify("Скрипт загружен! Бинды по умолчанию:")
+notify("[Z] ESP | [F] Fly | [V] Noclip")
+notify("[C] Монеты | [G] Авто-ган | [X] ГанESP | [T] Трапы")
+notify("Кликни кнопку [клавиша] чтобы сменить бинд")
