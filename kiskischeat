@@ -4,6 +4,7 @@ local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
 local SoundService = game:GetService("SoundService")
 local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 local Settings = {
@@ -30,9 +31,45 @@ local Keybinds = {
     TrapDetection = Enum.KeyCode.T
 }
 
--- Хранилище кнопок для обновления текста при нажатии клавиши
+-- ============================================
+-- 💾 СИСТЕМА СОХРАНЕНИЯ/ЗАГРУЗКИ БИНДОВ
+-- ============================================
+local CONFIG_FILE = "MM2_Binds_Config.json"
+
+local function saveBinds()
+    local data = {}
+    for k, v in pairs(Keybinds) do
+        data[k] = v.Name -- Сохраняем как строку (Enum нельзя в JSON)
+    end
+    local success, json = pcall(HttpService.JSONEncode, HttpService, data)
+    if success and writefile then
+        pcall(writefile, CONFIG_FILE, json)
+    end
+end
+
+local function loadBinds()
+    if not (isfile and readfile) then return false end
+    if not isfile(CONFIG_FILE) then return false end
+    
+    local success, content = pcall(readfile, CONFIG_FILE)
+    if not success or not content then return false end
+    
+    local success, data = pcall(HttpService.JSONDecode, HttpService, content)
+    if success and type(data) == "table" then
+        for k, name in pairs(data) do
+            if Keybinds[k] and Enum.KeyCode[name] then
+                Keybinds[k] = Enum.KeyCode[name]
+            end
+        end
+        return true
+    end
+    return false
+end
+
+-- Загружаем сохранённые бинды ДО создания интерфейса
+local bindsLoaded = loadBinds()
+
 local ToggleButtons = {}
--- Флаг: ожидаем ли мы нажатия клавиши для перебинда
 local waitingForBind = nil
 
 local COLORS = {
@@ -159,7 +196,6 @@ local function updateButtonVisual(configKey)
         btn.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
 
-    -- Обновляем текст бинд-кнопки
     if data.bindBtn then
         data.bindBtn.Text = "[" .. keyName .. "]"
     end
@@ -170,7 +206,6 @@ end
 -- ============================================
 local buttonCount = 0
 local function createToggle(text, configKey, callback)
-    -- Основная кнопка
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 220, 0, 35)
     btn.Position = UDim2.new(0, 15, 0, 50 + (buttonCount * 42))
@@ -181,7 +216,6 @@ local function createToggle(text, configKey, callback)
     btn.TextSize = 15
     btn.Parent = MainFrame
 
-    -- Кнопка для смены бинда (справа от основной)
     local bindBtn = Instance.new("TextButton")
     bindBtn.Size = UDim2.new(0, 80, 0, 35)
     bindBtn.Position = UDim2.new(0, 245, 0, 50 + (buttonCount * 42))
@@ -194,7 +228,6 @@ local function createToggle(text, configKey, callback)
     local keyName = Keybinds[configKey] and Keybinds[configKey].Name or "—"
     bindBtn.Text = "[" .. keyName .. "]"
 
-    -- Сохраняем данные
     ToggleButtons[configKey] = {
         btn = btn,
         bindBtn = bindBtn,
@@ -202,21 +235,16 @@ local function createToggle(text, configKey, callback)
         callback = callback
     }
 
-    -- Функция переключения
     local function doToggle()
         Settings[configKey] = not Settings[configKey]
         updateButtonVisual(configKey)
         if callback then callback(Settings[configKey]) end
     end
 
-    -- Клик по основной кнопке — переключить
-    btn.MouseButton1Click:Connect(function()
-        doToggle()
-    end)
+    btn.MouseButton1Click:Connect(doToggle)
 
-    -- Клик по бинд-кнопке — ждём новую клавишу
     bindBtn.MouseButton1Click:Connect(function()
-        if waitingForBind then return end -- уже ждём
+        if waitingForBind then return end
         waitingForBind = configKey
         bindBtn.Text = "[...]"
         bindBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 40)
@@ -244,7 +272,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
-    -- Если ждём нового бинда — назначаем клавишу
     if waitingForBind then
         local configKey = waitingForBind
         waitingForBind = nil
@@ -256,10 +283,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         end
         updateButtonVisual(configKey)
         notify("Бинд установлен: [" .. input.KeyCode.Name .. "] → " .. (data and data.label or configKey))
+        
+        -- 💾 АВТОСОХРАНЕНИЕ ПРИ СМЕНЕ БИНДА
+        saveBinds()
         return
     end
 
-    -- Проверяем все бинды
     for configKey, keyCode in pairs(Keybinds) do
         if input.KeyCode == keyCode then
             local data = ToggleButtons[configKey]
@@ -269,8 +298,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 if data.callback then
                     data.callback(Settings[configKey])
                 end
-
-                -- Уведомление при переключении через бинд
                 local state = Settings[configKey] and "ВКЛ" or "ВЫКЛ"
                 notify(data.label .. " → " .. state .. "  [" .. keyCode.Name .. "]")
             end
@@ -564,7 +591,20 @@ function updateNoclip(active)
     end
 end
 
-notify("Скрипт загружен! Бинды по умолчанию:")
-notify("[Z] ESP | [F] Fly | [V] Noclip")
-notify("[C] Монеты | [G] Авто-ган | [X] ГанESP | [T] Трапы")
-notify("Кликни кнопку [клавиша] чтобы сменить бинд")
+-- ============================================
+-- 📢 СТАРТОВЫЕ УВЕДОМЛЕНИЯ
+-- ============================================
+if bindsLoaded then
+    notify("✅ Конфиг биндов загружен из файла!")
+else
+    notify("📁 Файл конфига не найден. Используются стандартные бинды.")
+    if not (isfile and readfile and writefile) then
+        notify("⚠ Ваш эксплойт не поддерживает сохранение файлов.")
+    end
+end
+
+notify("Скрипт загружен! Текущие бинды:")
+for k, v in pairs(Keybinds) do
+    notify("[" .. v.Name .. "] " .. k)
+end
+notify("Кликни кнопку [клавиша] чтобы сменить бинд (сохранится автоматически)")
